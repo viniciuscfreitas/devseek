@@ -1,0 +1,14 @@
+node_modules
+.next
+.turbo
+pnpm-debug.log
+*.tsbuildinfo
+coverage
+env.local
+env.development
+env.production
+storage
+*.sqlite
+docker-compose.override.yml
+
+

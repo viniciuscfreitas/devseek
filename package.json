@@ -1,0 +1,64 @@
+{
+  "name": "devscout-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "prisma:generate": "prisma generate",
+    "prisma:format": "prisma format",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "dev:worker": "node -e \"console.log('worker placeholder running'); setInterval(() => {}, 1000);\""
+  },
+  "dependencies": {
+    "@auth/prisma-adapter": "^2.11.1",
+    "@prisma/client": "^6.19.0",
+    "bcryptjs": "^3.0.3",
+    "cheerio": "^1.1.2",
+    "next": "16.0.1",
+    "next-auth": "^4.24.13",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "resend": "^6.4.2",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^20",
+    "@types/nodemailer": "^7.0.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.1",
+    "globals": "^16.5.0",
+    "jsdom": "^25.0.1",
+    "prisma": "^6.19.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^2.1.5"
+  },
+  "pnpm": {
+    "allowedBuiltDependencies": [
+      "@prisma/client",
+      "prisma",
+      "@prisma/engines",
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
+  "packageManager": "pnpm@10.21.0"
+}

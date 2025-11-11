@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  passwordHash  String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profiles Profile[]
+  accounts Account[]
+  sessions Session[]
+}
+
+model Profile {
+  id                  String   @id @default(cuid())
+  userId              String
+  label               String   @default("Default")
+  filters             Json?
+  githubUsername      String?
+  cvStorageKey        String?
+  isDefault           Boolean  @default(false)
+  onboardingCompleted Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailTemplates EmailTemplate[]
+  applications   Application[]
+  scrapeLogs     ScrapeLog[]
+}
+
+model EmailTemplate {
+  id           String   @id @default(cuid())
+  profileId    String
+  name         String
+  subject      String
+  body         String
+  placeholders Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      Profile       @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  applications Application[]
+}
+
+model JobSource {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  baseUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  jobs       JobPosting[]
+  scrapeLogs ScrapeLog[]
+}
+
+model JobPosting {
+  id             String    @id @default(cuid())
+  jobSourceId    String
+  externalId     String?
+  title          String
+  company        String?
+  location       String?
+  description    String?
+  url            String?
+  salaryMin      Decimal?
+  salaryMax      Decimal?
+  currency       String?   @db.VarChar(6)
+  employmentType String?   @db.VarChar(50)
+  seniority      String?
+  tags           String[]
+  postedAt       DateTime?
+  fetchedAt      DateTime  @default(now())
+  matchScore     Int?      @default(0)
+  aiScore        Int?
+  aiSummary      String?
+  metadata       Json?
+
+  source       JobSource     @relation(fields: [jobSourceId], references: [id], onDelete: Cascade)
+  applications Application[]
+
+  @@unique([jobSourceId, externalId])
+  @@index([matchScore])
+  @@index([postedAt])
+}
+
+model Application {
+  id              String            @id @default(cuid())
+  profileId       String
+  jobId           String
+  emailTemplateId String?
+  status          ApplicationStatus @default(DRAFT)
+  sentAt          DateTime?
+  openedAt        DateTime?
+  repliedAt       DateTime?
+  notes           String?
+  cvVersionKey    String?
+  generatedEmail  String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  profile       Profile        @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  job           JobPosting     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  emailTemplate EmailTemplate? @relation(fields: [emailTemplateId], references: [id])
+
+  @@unique([jobId, profileId])
+}
+
+model ScrapeLog {
+  id           String       @id @default(cuid())
+  jobSourceId  String?
+  profileId    String?
+  status       ScrapeStatus
+  startedAt    DateTime     @default(now())
+  finishedAt   DateTime?
+  durationMs   Int?
+  itemsFound   Int?         @default(0)
+  errorMessage String?
+  metadata     Json?
+
+  jobSource JobSource? @relation(fields: [jobSourceId], references: [id], onDelete: SetNull)
+  profile   Profile?   @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([jobSourceId, startedAt])
+}
+
+enum ApplicationStatus {
+  DRAFT
+  QUEUED
+  SENT
+  OPENED
+  REPLIED
+  ARCHIVED
+}
+
+enum ScrapeStatus {
+  PENDING
+  SUCCESS
+  FAILURE
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
