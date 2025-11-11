@@ -5,12 +5,12 @@ services:
       target: dev
     command: pnpm dev
     ports:
-      - "3000:3000"
+      - "37654:3000"
     env_file:
       - env.example
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/devscout?schema=public
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://localhost:37654
     volumes:
       - .:/app
       - pnpm-store:/pnpm
@@ -45,7 +45,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: devscout
     ports:
-      - "55432:5432"
+      - "45432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -57,8 +57,8 @@ services:
   mailhog:
     image: mailhog/mailhog:v1.0.1
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - "19025:1025"
+      - "48025:8025"
 
 volumes:
   pgdata:
