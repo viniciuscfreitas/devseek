@@ -19,6 +19,8 @@ function resolveInputPath(): string {
   const fallbackNames = [
     'ListaOficial_FestaFrison.xlsx',
     'ListaOficial_FestaFrison (2).xlsx',
+    'ListaOficial_FestaFrison.csv',
+    'ListaOficial_FestaFrison (2).csv',
   ];
 
   for (const name of fallbackNames) {
@@ -30,7 +32,7 @@ function resolveInputPath(): string {
 
   if (existsSync(dadosDir)) {
     const firstXlsx = readdirSync(dadosDir).find((file) =>
-      file.toLowerCase().endsWith('.xlsx')
+      file.toLowerCase().endsWith('.xlsx') || file.toLowerCase().endsWith('.csv')
     );
     if (firstXlsx) {
       return join(dadosDir, firstXlsx);
