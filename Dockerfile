@@ -3,9 +3,9 @@
 ARG NODE_VERSION=20.18.0
 
 FROM node:${NODE_VERSION}-slim AS base
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN npm install -g pnpm@10.21.0
+ENV PNPM_HOME="/usr/local/share/pnpm"
+ENV PATH="/usr/local/bin:$PNPM_HOME:$PATH"
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
@@ -23,10 +23,10 @@ COPY . .
 RUN pnpm run build
 
 FROM node:${NODE_VERSION}-slim AS runner
+RUN npm install -g pnpm@10.21.0
 ENV NODE_ENV=production
-ENV PNPM_HOME="/pnpm"
-ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+ENV PNPM_HOME="/usr/local/share/pnpm"
+ENV PATH="/usr/local/bin:$PNPM_HOME:$PATH"
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml ./
