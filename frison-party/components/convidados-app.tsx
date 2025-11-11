@@ -20,7 +20,8 @@ const ConvidadosApp = () => {
   const [search, setSearch] = useState('')
   const [novoNome, setNovoNome] = useState('')
   const [novoTelefone, setNovoTelefone] = useState('')
-  const [novoTotal, setNovoTotal] = useState('1')
+  const [novoAcompanhantes, setNovoAcompanhantes] = useState('1')
+  const [temAcompanhante, setTemAcompanhante] = useState(false)
   const [erroCadastro, setErroCadastro] = useState<string | null>(null)
   const [adicionando, setAdicionando] = useState(false)
   const [erroAcompanhantes, setErroAcompanhantes] = useState<string | null>(null)
@@ -54,7 +55,8 @@ const ConvidadosApp = () => {
 
     const nome = novoNome.trim()
     const telefone = novoTelefone.trim()
-    const total = Math.max(1, parseInt(novoTotal, 10) || 1)
+    const acompanhantes = temAcompanhante ? Math.max(1, parseInt(novoAcompanhantes, 10) || 1) : 0
+    const total = 1 + acompanhantes
 
     if (!nome) {
       setErroCadastro('Informe o nome do convidado.')
@@ -85,7 +87,8 @@ const ConvidadosApp = () => {
       )
       setNovoNome('')
       setNovoTelefone('')
-      setNovoTotal('1')
+      setTemAcompanhante(false)
+      setNovoAcompanhantes('1')
       setModalAberto(false)
     } catch (error) {
       setErroCadastro(
@@ -210,19 +213,18 @@ const ConvidadosApp = () => {
     }
   }
 
-  const presentesPorConvidado = (convidado: Convidado) =>
-    (convidado.entrou === 1 ? 1 : 0) +
-    (convidado.entrou === 1 ? convidado.acompanhantes_presentes : 0)
   const totalConvidados = convidados.length
-  const totalPrevistos = convidados.reduce(
-    (acc, c) => acc + Math.max(1, c.total_confirmados ?? 1),
+  const acompanhantesPrevistos = convidados.reduce((acc, c) => {
+    const total = Math.max(1, c.total_confirmados ?? 1)
+    return acc + Math.max(0, total - 1)
+  }, 0)
+  const totalPrevistos = totalConvidados + acompanhantesPrevistos
+  const convidadosPresentes = convidados.filter((c) => c.entrou === 1).length
+  const acompanhantesPresentes = convidados.reduce(
+    (acc, c) => acc + (c.entrou === 1 ? c.acompanhantes_presentes : 0),
     0
   )
-  const presentes = convidados.reduce(
-    (acc, c) => acc + presentesPorConvidado(c),
-    0
-  )
-  const titularesPresentes = convidados.filter((c) => c.entrou === 1).length
+  const totalPresentes = convidadosPresentes + acompanhantesPresentes
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -252,20 +254,24 @@ const ConvidadosApp = () => {
           </div>
           <div className="flex gap-6 mb-4">
             <div>
-              <span className="text-sm text-gray-600">Convidados: </span>
+              <span className="text-sm text-gray-600">Convidados cadastrados: </span>
               <span className="font-bold">{totalConvidados}</span>
             </div>
             <div>
-              <span className="text-sm text-gray-600">Previstos: </span>
+              <span className="text-sm text-gray-600">Previstos (pessoas): </span>
               <span className="font-bold">{totalPrevistos}</span>
             </div>
             <div>
-              <span className="text-sm text-gray-600">Presentes (titulares): </span>
-              <span className="font-bold text-green-600">{titularesPresentes}</span>
+              <span className="text-sm text-gray-600">Convidados presentes: </span>
+              <span className="font-bold text-green-600">{convidadosPresentes}</span>
             </div>
             <div>
-              <span className="text-sm text-gray-600">Presentes (pessoas): </span>
-              <span className="font-bold text-green-600">{presentes}</span>
+              <span className="text-sm text-gray-600">Acompanhantes presentes: </span>
+              <span className="font-bold text-green-600">{acompanhantesPresentes}</span>
+            </div>
+            <div>
+              <span className="text-sm text-gray-600">Presentes (total): </span>
+              <span className="font-bold text-green-600">{totalPresentes}</span>
             </div>
           </div>
           <Input
@@ -295,13 +301,12 @@ const ConvidadosApp = () => {
               <div className="flex-1">
                 <div className="font-medium">{c.nome}</div>
                 {c.telefone && <div className="text-sm text-gray-500">{c.telefone}</div>}
-                <div className="text-xs text-gray-500">
-                  Acompanhantes presentes: {c.entrou === 1 ? c.acompanhantes_presentes : 0}
-                </div>
-                <div className="text-xs text-gray-400">
-                  Previsto: {Math.max(1, c.total_confirmados ?? 1)} pessoa
-                  {Math.max(1, c.total_confirmados ?? 1) > 1 ? 's' : ''}
-                </div>
+                {Math.max(1, c.total_confirmados ?? 1) > 1 && (
+                  <div className="text-xs text-gray-400">
+                    {Math.max(1, c.total_confirmados ?? 1) - 1} acompanhante
+                    {Math.max(1, c.total_confirmados ?? 1) - 1 === 1 ? '' : 's'}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -362,17 +367,29 @@ const ConvidadosApp = () => {
                 onChange={(e) => setNovoTelefone(e.target.value)}
               />
               <div className="flex items-center gap-3">
-                <label htmlFor="total-confirmados" className="text-sm text-gray-600">
-                  Total (convidado + acompanhantes)
+                <label className="flex items-center gap-2 text-sm text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={temAcompanhante}
+                    onChange={(e) => {
+                      setTemAcompanhante(e.target.checked)
+                      if (!e.target.checked) {
+                        setNovoAcompanhantes('1')
+                      }
+                    }}
+                  />
+                  Tem acompanhante?
                 </label>
-                <input
-                  id="total-confirmados"
-                  type="number"
-                  min={1}
-                  value={novoTotal}
-                  onChange={(e) => setNovoTotal(e.target.value)}
-                  className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                />
+                {temAcompanhante && (
+                  <input
+                    id="total-confirmados"
+                    type="number"
+                    min={1}
+                    value={novoAcompanhantes}
+                    onChange={(e) => setNovoAcompanhantes(e.target.value)}
+                    className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                  />
+                )}
               </div>
               {erroCadastro && <p className="text-sm text-red-500">{erroCadastro}</p>}
               <div className="flex justify-end gap-3 pt-2">

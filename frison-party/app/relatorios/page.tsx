@@ -43,28 +43,27 @@ export default function RelatoriosPage() {
     carregar();
   }, []);
 
-  const presentesPorConvidado = (convidado: Convidado) =>
-    (convidado.entrou === 1 ? 1 : 0) +
-    (convidado.entrou === 1 ? convidado.acompanhantes_presentes : 0);
   const totalConvidados = convidados.length;
-  const totalPrevistos = convidados.reduce(
-    (acc, c) => acc + Math.max(1, c.total_confirmados ?? 1),
+  const acompanhantesPrevistos = convidados.reduce((acc, c) => {
+    const total = Math.max(1, c.total_confirmados ?? 1);
+    return acc + Math.max(0, total - 1);
+  }, 0);
+  const totalPrevistos = totalConvidados + acompanhantesPrevistos;
+  const convidadosPresentes = convidados.filter((c) => c.entrou === 1).length;
+  const acompanhantesPresentes = convidados.reduce(
+    (acc, c) => acc + (c.entrou === 1 ? c.acompanhantes_presentes : 0),
     0
   );
-  const presentes = convidados.reduce(
-    (acc, c) => acc + presentesPorConvidado(c),
-    0
-  );
-  const titularesPresentes = convidados.filter((c) => c.entrou === 1).length;
-  const ausentes = Math.max(0, totalPrevistos - presentes);
-  const taxa = totalPrevistos > 0 ? Math.round((presentes / totalPrevistos) * 100) : 0;
+  const presentesTotal = convidadosPresentes + acompanhantesPresentes;
+  const ausentes = Math.max(0, totalPrevistos - presentesTotal);
+  const taxa = totalPrevistos > 0 ? Math.round((presentesTotal / totalPrevistos) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">Relatórios</h1>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-4">
             <div className="text-sm text-gray-600 mb-1">Convidados</div>
             <div className="text-3xl font-bold">{totalConvidados}</div>
@@ -74,12 +73,16 @@ export default function RelatoriosPage() {
             <div className="text-3xl font-bold">{totalPrevistos}</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Presentes (titulares)</div>
-            <div className="text-3xl font-bold text-green-600">{titularesPresentes}</div>
+            <div className="text-sm text-gray-600 mb-1">Convidados presentes</div>
+            <div className="text-3xl font-bold text-green-600">{convidadosPresentes}</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-600 mb-1">Presentes</div>
-            <div className="text-3xl font-bold text-green-600">{presentes}</div>
+            <div className="text-sm text-gray-600 mb-1">Acompanhantes presentes</div>
+            <div className="text-3xl font-bold text-green-600">{acompanhantesPresentes}</div>
+          </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="text-sm text-gray-600 mb-1">Presentes (total)</div>
+            <div className="text-3xl font-bold text-green-600">{presentesTotal}</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4">
             <div className="text-sm text-gray-600 mb-1">Ausentes</div>
@@ -105,21 +108,21 @@ export default function RelatoriosPage() {
 
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-bold mb-4">Presentes (pessoas: {presentes})</h2>
+            <h2 className="text-xl font-bold mb-4">Presentes (pessoas: {presentesTotal})</h2>
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {convidados
                 .filter((c) => c.entrou === 1)
                 .map((c) => {
                   const acompanhantes = c.acompanhantes_presentes;
-                  const pessoas = presentesPorConvidado(c);
                   return (
                     <div key={c.id} className="p-2 bg-green-50 rounded">
                       <div className="font-medium">{c.nome}</div>
                       {c.telefone && <div className="text-sm text-gray-500">{c.telefone}</div>}
-                      <div className="text-xs text-gray-500">
-                        Titular + {acompanhantes} acompanhante{acompanhantes === 1 ? '' : 's'} (
-                        {pessoas} pessoa{pessoas === 1 ? '' : 's'} no total)
-                      </div>
+                      {acompanhantes > 0 && (
+                        <div className="text-xs text-gray-500">
+                          {acompanhantes} acompanhante{acompanhantes === 1 ? '' : 's'}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -133,13 +136,17 @@ export default function RelatoriosPage() {
                 .filter((c) => c.entrou === 0)
                 .map((c) => {
                   const previsto = Math.max(1, c.total_confirmados ?? 1);
+                  const acompanhantesPrevistosItem = Math.max(0, previsto - 1);
                   return (
                     <div key={c.id} className="p-2 bg-gray-50 rounded">
                       <div className="font-medium">{c.nome}</div>
                       {c.telefone && <div className="text-sm text-gray-500">{c.telefone}</div>}
-                      <div className="text-xs text-gray-500">
-                        Previsto: {previsto} pessoa{previsto === 1 ? '' : 's'}
-                      </div>
+                      {acompanhantesPrevistosItem > 0 && (
+                        <div className="text-xs text-gray-500">
+                          {acompanhantesPrevistosItem} acompanhante
+                          {acompanhantesPrevistosItem === 1 ? '' : 's'}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
