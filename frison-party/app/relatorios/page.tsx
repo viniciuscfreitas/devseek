@@ -15,9 +15,13 @@ export default function RelatoriosPage() {
   const [convidados, setConvidados] = useState<Convidado[]>([]);
 
   useEffect(() => {
-    fetch('/api/convidados')
-      .then((res) => res.json())
-      .then((data) =>
+    const carregar = async () => {
+      try {
+        const response = await fetch(`/api/convidados?ts=${Date.now()}`, {
+          cache: 'no-store',
+          credentials: 'include',
+        });
+        const data = await response.json();
         setConvidados(
           Array.isArray(data)
             ? data.map((item: any) => ({
@@ -30,8 +34,13 @@ export default function RelatoriosPage() {
                 ),
               }))
             : []
-        )
-      );
+        );
+      } catch (error) {
+        console.error('Falha ao carregar relatórios', error);
+      }
+    };
+
+    carregar();
   }, []);
 
   const presentesPorConvidado = (convidado: Convidado) =>

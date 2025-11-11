@@ -24,6 +24,7 @@ const ConvidadosApp = () => {
   const [erroCadastro, setErroCadastro] = useState<string | null>(null)
   const [adicionando, setAdicionando] = useState(false)
   const [erroAcompanhantes, setErroAcompanhantes] = useState<string | null>(null)
+  const [modalAberto, setModalAberto] = useState(false)
 
   useEffect(() => {
     const url = search
@@ -85,6 +86,7 @@ const ConvidadosApp = () => {
       setNovoNome('')
       setNovoTelefone('')
       setNovoTotal('1')
+      setModalAberto(false)
     } catch (error) {
       setErroCadastro(
         error instanceof Error ? error.message : 'Não foi possível cadastrar o convidado.'
@@ -231,13 +233,22 @@ const ConvidadosApp = () => {
               <h1 className="text-2xl font-bold">Lista de Presença</h1>
               <p className="text-sm text-gray-500">Somente usuários autorizados podem visualizar.</p>
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
-            >
-              Sair
-            </button>
+            <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+              <button
+                type="button"
+                onClick={() => setModalAberto(true)}
+                className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700"
+              >
+                Adicionar convidado
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Sair
+              </button>
+            </div>
           </div>
           <div className="flex gap-6 mb-4">
             <div>
@@ -264,44 +275,6 @@ const ConvidadosApp = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full"
           />
-          <form onSubmit={handleAdicionarConvidado} className="mt-4 space-y-3">
-            <div className="grid gap-3 md:grid-cols-3">
-              <Input
-                placeholder="Nome do convidado"
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-                className="md:col-span-2"
-              />
-              <Input
-                placeholder="Telefone"
-                value={novoTelefone}
-                onChange={(e) => setNovoTelefone(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label htmlFor="total-confirmados" className="text-sm text-gray-600">
-                  Total (convidado + acompanhantes)
-                </label>
-                <input
-                  id="total-confirmados"
-                  type="number"
-                  min={1}
-                  value={novoTotal}
-                  onChange={(e) => setNovoTotal(e.target.value)}
-                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={adicionando}
-                className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
-              >
-                {adicionando ? 'Adicionando...' : 'Adicionar convidado'}
-              </button>
-            </div>
-            {erroCadastro && <p className="text-sm text-red-500">{erroCadastro}</p>}
-          </form>
           {erroAcompanhantes && (
             <p className="mt-2 text-sm text-red-500">{erroAcompanhantes}</p>
           )}
@@ -356,6 +329,75 @@ const ConvidadosApp = () => {
           ))}
         </div>
       </div>
+      {modalAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-lg">
+            <div className="mb-4 flex items-start justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Novo convidado</h2>
+                <p className="text-sm text-gray-500">
+                  Informe os dados do titular e o total previsto de pessoas.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setModalAberto(false)
+                  setErroCadastro(null)
+                }}
+                className="text-sm text-gray-500 transition hover:text-gray-700"
+              >
+                Fechar
+              </button>
+            </div>
+            <form onSubmit={handleAdicionarConvidado} className="space-y-3">
+              <Input
+                placeholder="Nome do convidado"
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+              />
+              <Input
+                placeholder="Telefone"
+                value={novoTelefone}
+                onChange={(e) => setNovoTelefone(e.target.value)}
+              />
+              <div className="flex items-center gap-3">
+                <label htmlFor="total-confirmados" className="text-sm text-gray-600">
+                  Total (convidado + acompanhantes)
+                </label>
+                <input
+                  id="total-confirmados"
+                  type="number"
+                  min={1}
+                  value={novoTotal}
+                  onChange={(e) => setNovoTotal(e.target.value)}
+                  className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                />
+              </div>
+              {erroCadastro && <p className="text-sm text-red-500">{erroCadastro}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalAberto(false)
+                    setErroCadastro(null)
+                  }}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 transition hover:bg-gray-100"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={adicionando}
+                  className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
+                >
+                  {adicionando ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
