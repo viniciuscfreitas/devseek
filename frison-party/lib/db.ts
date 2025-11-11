@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
-import { join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
 
 const dbPath = process.env.DATABASE_PATH || join(process.cwd(), 'data', 'convidados.db');
 
@@ -17,6 +18,11 @@ export interface Convidado {
 
 export function getDb(): Database.Database {
   if (db) return db;
+
+  const dbDir = dirname(dbPath);
+  if (!existsSync(dbDir)) {
+    mkdirSync(dbDir, { recursive: true });
+  }
 
   db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
