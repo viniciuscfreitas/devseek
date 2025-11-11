@@ -1,5 +1,5 @@
 import { requireAuth } from '@/lib/auth';
-import { updateCheckIn } from '@/lib/db';
+import { updateConvidadoStatus } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function PUT(
@@ -16,8 +16,25 @@ export async function PUT(
       return NextResponse.json({ error: 'ID inválido' }, { status: 400 });
     }
 
-    const { entrou } = await request.json();
-    const convidado = updateCheckIn(id, !!entrou);
+    const { entrou, acompanhantesPresentes } = await request.json();
+    if (typeof entrou === 'undefined' && typeof acompanhantesPresentes === 'undefined') {
+      return NextResponse.json(
+        { error: 'Nenhum campo para atualizar informado.' },
+        { status: 400 }
+      );
+    }
+
+    const entrouValue = typeof entrou === 'boolean' ? entrou : undefined;
+    if (typeof entrouValue === 'undefined') {
+      return NextResponse.json({ error: 'Campo "entrou" obrigatório.' }, { status: 400 });
+    }
+
+    const acompanhanteNumber =
+      typeof acompanhantesPresentes === 'undefined'
+        ? undefined
+        : Math.max(0, Math.floor(Number(acompanhantesPresentes) || 0));
+
+    const convidado = updateConvidadoStatus(id, entrouValue, acompanhanteNumber);
 
     return convidado
       ? NextResponse.json(convidado)

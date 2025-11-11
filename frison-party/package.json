@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "extract": "tsx scripts/extract-excel.ts",
+    "import": "tsx scripts/import-xlsx.ts",
     "clear-db": "tsx scripts/clear-db.ts"
   },
   "dependencies": {

@@ -17,11 +17,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
   }
 
-  const { nome, telefone } = await request.json();
+  const { nome, telefone, totalConfirmados } = await request.json();
   if (!nome?.trim()) {
     return NextResponse.json({ error: 'Nome obrigatório' }, { status: 400 });
   }
-  const convidado = createConvidado(nome.trim(), telefone?.trim());
+  const total = Number.isFinite(totalConfirmados) ? Number(totalConfirmados) : 1;
+  const convidadosTotal = total > 0 ? Math.floor(total) : 1;
+  const convidado = createConvidado(nome.trim(), telefone?.trim(), convidadosTotal);
   return NextResponse.json(convidado, { status: 201 });
 }
 

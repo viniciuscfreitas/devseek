@@ -3,19 +3,27 @@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 
 interface Convidado {
   id: number
   nome: string
   telefone?: string
   entrou: number
+  total_confirmados: number
+  acompanhantes_presentes: number
 }
 
 const ConvidadosApp = () => {
   const router = useRouter()
   const [convidados, setConvidados] = useState<Convidado[]>([])
   const [search, setSearch] = useState('')
+  const [novoNome, setNovoNome] = useState('')
+  const [novoTelefone, setNovoTelefone] = useState('')
+  const [novoTotal, setNovoTotal] = useState('1')
+  const [erroCadastro, setErroCadastro] = useState<string | null>(null)
+  const [adicionando, setAdicionando] = useState(false)
+  const [erroAcompanhantes, setErroAcompanhantes] = useState<string | null>(null)
 
   useEffect(() => {
     const url = search
@@ -23,44 +31,171 @@ const ConvidadosApp = () => {
       : '/api/convidados'
     fetch(url)
       .then((res) => res.json())
-      .then((data) => setConvidados(Array.isArray(data) ? data : []))
+      .then((data) =>
+        setConvidados(
+          Array.isArray(data)
+            ? data.map((item: any) => ({
+                ...item,
+                entrou: item.entrou === 1 ? 1 : 0,
+                total_confirmados: Math.max(1, Number(item.total_confirmados) || 1),
+                acompanhantes_presentes: Math.max(
+                  0,
+                  Number(item.acompanhantes_presentes ?? 0) || 0
+                ),
+              }))
+            : []
+        )
+      )
   }, [search])
 
-  const handleCheckIn = async (id: number, entrou: boolean) => {
-    const novoEstado = entrou ? 0 : 1
-    setConvidados((prev) => prev.map((c) => (c.id === id ? { ...c, entrou: novoEstado } : c)))
+  const handleAdicionarConvidado = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const nome = novoNome.trim()
+    const telefone = novoTelefone.trim()
+    const total = Math.max(1, parseInt(novoTotal, 10) || 1)
+
+    if (!nome) {
+      setErroCadastro('Informe o nome do convidado.')
+      return
+    }
+
+    setErroCadastro(null)
+    setAdicionando(true)
+
+    try {
+      const response = await fetch('/api/convidados', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nome,
+          telefone: telefone || undefined,
+          totalConfirmados: total,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Falha ao cadastrar convidado.')
+      }
+
+      const criado: Convidado = await response.json()
+      setConvidados((prev) =>
+        [...prev, criado].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      )
+      setNovoNome('')
+      setNovoTelefone('')
+      setNovoTotal('1')
+    } catch (error) {
+      setErroCadastro(
+        error instanceof Error ? error.message : 'Não foi possível cadastrar o convidado.'
+      )
+    } finally {
+      setAdicionando(false)
+    }
+  }
+
+  const normalizarConvidado = (dados: any): Convidado => ({
+    ...dados,
+    entrou: dados.entrou === 1 || dados.entrou === true ? 1 : 0,
+    total_confirmados: Math.max(1, Number(dados.total_confirmados) || 1),
+    acompanhantes_presentes: Math.max(0, Number(dados.acompanhantes_presentes ?? 0) || 0),
+  })
+
+  const handleCheckIn = async (convidado: Convidado) => {
+    let estadoAnterior: Convidado[] = []
+    const novoEntrou = convidado.entrou === 1 ? 0 : 1
+    const acompanhantesQuandoSai = novoEntrou === 1 ? convidado.acompanhantes_presentes : 0
+    setConvidados((prev) => {
+      estadoAnterior = prev.map((c) => ({ ...c }))
+      return prev.map((c) =>
+        c.id === convidado.id
+          ? {
+              ...c,
+              entrou: novoEntrou,
+              acompanhantes_presentes: novoEntrou === 1 ? c.acompanhantes_presentes : 0,
+            }
+          : c
+      )
+    })
+
+    try {
+      const response = await fetch(`/api/convidados/${convidado.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entrou: novoEntrou === 1,
+          acompanhantesPresentes: acompanhantesQuandoSai,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Falha ao atualizar')
+      }
+
+      const updated = normalizarConvidado(await response.json())
+      setConvidados((prev) => prev.map((c) => (c.id === convidado.id ? updated : c)))
+    } catch (error) {
+      console.error(error)
+      setConvidados(estadoAnterior)
+    }
+  }
+
+  const atualizarAcompanhantes = async (id: number, delta: number) => {
+    let estadoAnterior: Convidado[] = []
+    let novoValor = 0
+    let entrouAtual = false
+
+    setErroAcompanhantes(null)
+
+    setConvidados((prev) => {
+      const alvo = prev.find((c) => c.id === id)
+      if (!alvo) {
+        return prev
+      }
+
+      if (alvo.entrou !== 1 && delta > 0) {
+        setErroAcompanhantes('Marque o convidado como presente antes de adicionar acompanhantes.')
+        return prev
+      }
+
+      const calculado = Math.max(0, alvo.acompanhantes_presentes + delta)
+      if (calculado === alvo.acompanhantes_presentes) {
+        return prev
+      }
+
+      estadoAnterior = prev.map((c) => ({ ...c }))
+      novoValor = calculado
+      entrouAtual = alvo.entrou === 1
+
+      return prev.map((c) =>
+        c.id === id ? { ...c, acompanhantes_presentes: calculado } : c
+      )
+    })
+
+    if (!estadoAnterior.length) {
+      return
+    }
 
     try {
       const response = await fetch(`/api/convidados/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entrou: !entrou }),
+        body: JSON.stringify({
+          entrou: entrouAtual,
+          acompanhantesPresentes: novoValor,
+        }),
       })
 
       if (!response.ok) {
-        const url = search
-          ? `/api/convidados?search=${encodeURIComponent(search)}`
-          : '/api/convidados'
-        const res = await fetch(url)
-        const data = await res.json()
-        setConvidados(Array.isArray(data) ? data : [])
-        throw new Error('Falha ao atualizar')
+        throw new Error('Falha ao atualizar acompanhantes')
       }
 
-      const updated = await response.json()
-      setConvidados((prev) => prev.map((c) => (c.id === id ? updated : c)))
+      const atualizado = normalizarConvidado(await response.json())
+      setConvidados((prev) => prev.map((c) => (c.id === id ? atualizado : c)))
     } catch (error) {
-      const url = search
-        ? `/api/convidados?search=${encodeURIComponent(search)}`
-        : '/api/convidados'
-      fetch(url)
-        .then((res) => res.json())
-        .then((data) => setConvidados(Array.isArray(data) ? data : []))
-        .catch(() => {
-          setConvidados((prev) =>
-            prev.map((c) => (c.id === id ? { ...c, entrou: entrou ? 1 : 0 } : c))
-          )
-        })
+      console.error(error)
+      setConvidados(estadoAnterior)
+      setErroAcompanhantes('Não foi possível atualizar os acompanhantes. Tente novamente.')
     }
   }
 
@@ -73,8 +208,19 @@ const ConvidadosApp = () => {
     }
   }
 
-  const presentes = convidados.filter((c) => c.entrou === 1).length
-  const total = convidados.length
+  const presentesPorConvidado = (convidado: Convidado) =>
+    (convidado.entrou === 1 ? 1 : 0) +
+    (convidado.entrou === 1 ? convidado.acompanhantes_presentes : 0)
+  const totalConvidados = convidados.length
+  const totalPrevistos = convidados.reduce(
+    (acc, c) => acc + Math.max(1, c.total_confirmados ?? 1),
+    0
+  )
+  const presentes = convidados.reduce(
+    (acc, c) => acc + presentesPorConvidado(c),
+    0
+  )
+  const titularesPresentes = convidados.filter((c) => c.entrou === 1).length
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
@@ -95,11 +241,19 @@ const ConvidadosApp = () => {
           </div>
           <div className="flex gap-6 mb-4">
             <div>
-              <span className="text-sm text-gray-600">Total: </span>
-              <span className="font-bold">{total}</span>
+              <span className="text-sm text-gray-600">Convidados: </span>
+              <span className="font-bold">{totalConvidados}</span>
             </div>
             <div>
-              <span className="text-sm text-gray-600">Presentes: </span>
+              <span className="text-sm text-gray-600">Previstos: </span>
+              <span className="font-bold">{totalPrevistos}</span>
+            </div>
+            <div>
+              <span className="text-sm text-gray-600">Presentes (titulares): </span>
+              <span className="font-bold text-green-600">{titularesPresentes}</span>
+            </div>
+            <div>
+              <span className="text-sm text-gray-600">Presentes (pessoas): </span>
               <span className="font-bold text-green-600">{presentes}</span>
             </div>
           </div>
@@ -110,6 +264,47 @@ const ConvidadosApp = () => {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full"
           />
+          <form onSubmit={handleAdicionarConvidado} className="mt-4 space-y-3">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Input
+                placeholder="Nome do convidado"
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                className="md:col-span-2"
+              />
+              <Input
+                placeholder="Telefone"
+                value={novoTelefone}
+                onChange={(e) => setNovoTelefone(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label htmlFor="total-confirmados" className="text-sm text-gray-600">
+                  Total (convidado + acompanhantes)
+                </label>
+                <input
+                  id="total-confirmados"
+                  type="number"
+                  min={1}
+                  value={novoTotal}
+                  onChange={(e) => setNovoTotal(e.target.value)}
+                  className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={adicionando}
+                className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700 disabled:opacity-60"
+              >
+                {adicionando ? 'Adicionando...' : 'Adicionar convidado'}
+              </button>
+            </div>
+            {erroCadastro && <p className="text-sm text-red-500">{erroCadastro}</p>}
+          </form>
+          {erroAcompanhantes && (
+            <p className="mt-2 text-sm text-red-500">{erroAcompanhantes}</p>
+          )}
         </div>
 
         <div className="space-y-2">
@@ -122,11 +317,39 @@ const ConvidadosApp = () => {
             >
               <Checkbox
                 checked={c.entrou === 1}
-                onCheckedChange={() => handleCheckIn(c.id, c.entrou === 1)}
+                onCheckedChange={() => handleCheckIn(c)}
               />
               <div className="flex-1">
                 <div className="font-medium">{c.nome}</div>
                 {c.telefone && <div className="text-sm text-gray-500">{c.telefone}</div>}
+                <div className="text-xs text-gray-500">
+                  Acompanhantes presentes: {c.entrou === 1 ? c.acompanhantes_presentes : 0}
+                </div>
+                <div className="text-xs text-gray-400">
+                  Previsto: {Math.max(1, c.total_confirmados ?? 1)} pessoa
+                  {Math.max(1, c.total_confirmados ?? 1) > 1 ? 's' : ''}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => atualizarAcompanhantes(c.id, -1)}
+                  disabled={c.acompanhantes_presentes === 0 || c.entrou !== 1}
+                  className="flex h-8 w-8 items-center justify-center rounded border border-gray-300 text-lg text-gray-600 transition hover:bg-gray-100 disabled:opacity-30"
+                >
+                  -
+                </button>
+                <span className="w-6 text-center text-sm font-medium">
+                  {c.entrou === 1 ? c.acompanhantes_presentes : 0}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => atualizarAcompanhantes(c.id, 1)}
+                  disabled={c.entrou !== 1}
+                  className="flex h-8 w-8 items-center justify-center rounded border border-gray-300 text-lg text-gray-600 transition hover:bg-gray-100 disabled:opacity-30"
+                >
+                  +
+                </button>
               </div>
               {c.entrou === 1 && <span className="text-green-600 text-sm">✓</span>}
             </div>
