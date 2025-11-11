@@ -2,7 +2,6 @@
 
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { useRouter } from 'next/navigation'
 import { FormEvent, useEffect, useState } from 'react'
 
 interface Convidado {
@@ -15,7 +14,6 @@ interface Convidado {
 }
 
 const ConvidadosApp = () => {
-  const router = useRouter()
   const [convidados, setConvidados] = useState<Convidado[]>([])
   const [search, setSearch] = useState('')
   const [novoNome, setNovoNome] = useState('')
@@ -204,15 +202,6 @@ const ConvidadosApp = () => {
     }
   }
 
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' })
-    } finally {
-      router.replace('/login')
-      router.refresh()
-    }
-  }
-
   const totalConvidados = convidados.length
   const acompanhantesPrevistos = convidados.reduce((acc, c) => {
     const total = Math.max(1, c.total_confirmados ?? 1)
@@ -235,20 +224,13 @@ const ConvidadosApp = () => {
               <h1 className="text-2xl font-bold">Lista de Presença</h1>
               <p className="text-sm text-gray-500">Somente usuários autorizados podem visualizar.</p>
             </div>
-            <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
+            <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => setModalAberto(true)}
                 className="rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-green-700"
               >
                 Adicionar convidado
-              </button>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
-              >
-                Sair
               </button>
             </div>
           </div>
